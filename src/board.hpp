@@ -6,6 +6,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 
 #define XXH_INLINE_ALL
 #include "xxhash.h"
@@ -45,6 +46,8 @@ union piece_bitboard {
 
 static_assert(sizeof(piece_bitboard) == sizeof(uint32_t));
 
+
+
 class game_board {
 private:
     inline bool move_piece_common(piece_bitboard &piece, piece_bitboard new_piece) {
@@ -63,6 +66,8 @@ private:
     }
 
 public:
+    typedef bool (game_board::*move_func) (piece_bitboard &);
+    
     static constexpr uint32_t solution_mask     = 0b00000'00011'00011'00000UL;
     static constexpr uint32_t top_row_mask      = 0b11111'00000'00000'00000UL;
     static constexpr uint32_t bottom_row_mask   = 0b00000'00000'00000'11111UL;
@@ -133,6 +138,17 @@ public:
 
         return move_piece_common(piece, new_piece);
     }
+    
+    bool double_move(piece_bitboard &piece, move_func move_1, move_func move_2) {
+        piece_bitboard original_pos = piece;
+
+        if ( !( std::invoke(move_1, *this, piece) && std::invoke(move_2, *this, piece) ) ) {
+            piece = original_pos;
+            return false;
+        }
+        return true;
+    }
+
 
     bool solved() const {
         return (pieces[red_index].bits & solution_mask) == solution_mask;
