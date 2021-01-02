@@ -1,13 +1,14 @@
 #include <iostream>
 #include <optional>
 #include <queue>
-#include <unordered_map>
 #include <cstddef>
+
+#include <tsl/robin_map.h>
 
 #include "board.hpp"
 
 static size_t print_solution(game_board board,
-                             const std::unordered_map<game_board, std::optional<game_board>> &predecessors) {
+                             const tsl::robin_map<game_board, std::optional<game_board>> &predecessors) {
     size_t move = 0;
     auto predecessor = predecessors.at(board);
     if (predecessor) {
@@ -22,7 +23,7 @@ int main() {
     game_board board;
     std::queue<game_board> queue;
     queue.push(board);
-    std::unordered_map<game_board, std::optional<game_board>> predecessors;
+    tsl::robin_map<game_board, std::optional<game_board>> predecessors;
     predecessors.insert(std::make_pair(board, std::nullopt));
 
     while (!queue.empty()) {

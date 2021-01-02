@@ -8,7 +8,7 @@
 #include <cstdint>
 
 #define XXH_INLINE_ALL
-#include "xxhash.h"
+#include <xxhash.h>
 
 enum piece_type : uint8_t {
     green  = 0b00,

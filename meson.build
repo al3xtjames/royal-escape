@@ -4,4 +4,5 @@ project('royal-escape', 'cpp',
   version : '1.0.0',
 )
 
-executable('solver', 'src/solver.cpp')
+executable('solver', 'src/solver.cpp',
+  include_directories : ['external/robin-map/include', 'external/xxhash/include'])
