@@ -29,14 +29,62 @@ int main() {
         game_board new_board = queue.front();
         queue.pop();
         if (new_board.solved()) {
-            std::cout << "Found solution\n\n";
+            std::cout << "Found solution!\n\n";
             print_solution(new_board, predecessors);
             std::cout << "Solution:\n" << new_board << '\n';
-            break;
+            return 0;
         }
 
         game_board prev_board = new_board;
         for (auto &piece : new_board.pieces) {
+            new_board = prev_board;
+            if (new_board.move_piece_up_twice(piece) && predecessors.find(new_board) == predecessors.end()) {
+                queue.push(new_board);
+                predecessors[new_board] = prev_board;
+            }
+
+            new_board = prev_board;
+            if (new_board.move_piece_down_twice(piece) && predecessors.find(new_board) == predecessors.end()) {
+                queue.push(new_board);
+                predecessors[new_board] = prev_board;
+            }
+
+            new_board = prev_board;
+            if (new_board.move_piece_left_twice(piece) && predecessors.find(new_board) == predecessors.end()) {
+                queue.push(new_board);
+                predecessors[new_board] = prev_board;
+            }
+
+            new_board = prev_board;
+            if (new_board.move_piece_right_twice(piece) && predecessors.find(new_board) == predecessors.end()) {
+                queue.push(new_board);
+                predecessors[new_board] = prev_board;
+            }
+
+            new_board = prev_board;
+            if (new_board.move_piece_up_left(piece) && predecessors.find(new_board) == predecessors.end()) {
+                queue.push(new_board);
+                predecessors[new_board] = prev_board;
+            }
+
+            new_board = prev_board;
+            if (new_board.move_piece_up_right(piece) && predecessors.find(new_board) == predecessors.end()) {
+                queue.push(new_board);
+                predecessors[new_board] = prev_board;
+            }
+
+            new_board = prev_board;
+            if (new_board.move_piece_bottom_left(piece) && predecessors.find(new_board) == predecessors.end()) {
+                queue.push(new_board);
+                predecessors[new_board] = prev_board;
+            }
+
+            new_board = prev_board;
+            if (new_board.move_piece_bottom_right(piece) && predecessors.find(new_board) == predecessors.end()) {
+                queue.push(new_board);
+                predecessors[new_board] = prev_board;
+            }
+
             new_board = prev_board;
             if (new_board.move_piece_up(piece) && predecessors.find(new_board) == predecessors.end()) {
                 queue.push(new_board);
@@ -62,4 +110,7 @@ int main() {
             }
         }
     }
+
+    std::cout << "No solution found\n";
+    return 1;
 }

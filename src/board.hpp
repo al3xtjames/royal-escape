@@ -11,10 +11,10 @@
 #include "xxhash.h"
 
 enum piece_type : uint8_t {
-    red,
-    green,
-    blue,
-    purple
+    green  = 0b00,
+    blue   = 0b01,
+    purple = 0b10,
+    red    = 0b11
 };
 
 // This probably only works on little-endian systems (and using a union for type-punning is a GNU extension).
@@ -62,12 +62,53 @@ private:
         return true;
     }
 
+    inline bool move_piece_combo_common(piece_bitboard &piece, piece_bitboard intermediate_piece,
+                                        piece_bitboard new_piece) {
+        uint32_t all_pieces_mask = 0;
+        for (auto piece : pieces) {
+            all_pieces_mask |= piece.bits;
+        }
+
+        all_pieces_mask &= ~(piece.bits);
+        if ((intermediate_piece.bits | new_piece.bits) & all_pieces_mask) {
+            return false;
+        }
+
+        piece = new_piece;
+        return true;
+    }
+
+    inline bool move_piece_combo_common(piece_bitboard &piece, piece_bitboard intermediate_piece_1,
+                                        piece_bitboard intermediate_piece_2, piece_bitboard new_piece) {
+        uint32_t all_pieces_mask = 0;
+        for (auto piece : pieces) {
+            all_pieces_mask |= piece.bits;
+        }
+
+        all_pieces_mask &= ~(piece.bits);
+        if (((intermediate_piece_1.bits | new_piece.bits) & all_pieces_mask) &&
+            ((intermediate_piece_2.bits | new_piece.bits) & all_pieces_mask)) {
+            return false;
+        }
+
+        piece = new_piece;
+        return true;
+    }
+
 public:
-    static constexpr uint32_t solution_mask     = 0b00000'00011'00011'00000UL;
-    static constexpr uint32_t top_row_mask      = 0b11111'00000'00000'00000UL;
-    static constexpr uint32_t bottom_row_mask   = 0b00000'00000'00000'11111UL;
-    static constexpr uint32_t left_column_mask  = 0b10000'10000'10000'10000UL;
-    static constexpr uint32_t right_column_mask = 0b00001'00001'00001'00001UL;
+    static constexpr uint32_t solution_mask          = 0b00'00000'00011'00011'00000UL;
+    static constexpr uint32_t top_row_mask           = 0b00'11111'00000'00000'00000UL;
+    static constexpr uint32_t bottom_row_mask        = 0b00'00000'00000'00000'11111UL;
+    static constexpr uint32_t left_column_mask       = 0b00'10000'10000'10000'10000UL;
+    static constexpr uint32_t right_column_mask      = 0b00'00001'00001'00001'00001UL;
+    static constexpr uint32_t top_two_rows_mask      = 0b01'11111'11111'00000'00000UL;
+    static constexpr uint32_t bottom_two_rows_mask   = 0b01'00000'00000'11111'11111UL;
+    static constexpr uint32_t left_two_columns_mask  = 0b10'11000'11000'11000'11000UL;
+    static constexpr uint32_t right_two_columns_mask = 0b10'00011'00011'00011'00011UL;
+    static constexpr uint32_t top_left_mask          = 0b11'11111'10000'10000'10000UL;
+    static constexpr uint32_t top_right_mask         = 0b11'11111'00001'00001'00001UL;
+    static constexpr uint32_t bottom_left_mask       = 0b11'10000'10000'10000'11111UL;
+    static constexpr uint32_t bottom_right_mask      = 0b11'00001'00001'00001'11111UL;
 
     std::array<piece_bitboard, 10> pieces = {{
         { piece_type::blue,   0b11000, 0b00000, 0b00000, 0b00000 },
@@ -134,6 +175,174 @@ public:
         return move_piece_common(piece, new_piece);
     }
 
+    bool move_piece_up_twice(piece_bitboard &piece) {
+        if (piece.bits & top_two_rows_mask) {
+            return false;
+        }
+
+        piece_bitboard new_piece = { piece.type, piece.row_3, piece.row_4, 0, 0 };
+        piece_bitboard intermediate_piece = { piece.type, piece.row_2, piece.row_3, piece.row_4, 0 };
+        return move_piece_combo_common(piece, intermediate_piece, new_piece);
+    }
+
+    bool move_piece_down_twice(piece_bitboard &piece) {
+        if (piece.bits & bottom_two_rows_mask) {
+            return false;
+        }
+
+        piece_bitboard new_piece = { piece.type, 0, 0, piece.row_1, piece.row_2 };
+        piece_bitboard intermediate_piece = { piece.type, 0, piece.row_1, piece.row_2, piece.row_3 };
+        return move_piece_combo_common(piece, intermediate_piece, new_piece);
+    }
+
+    bool move_piece_left_twice(piece_bitboard &piece) {
+        if (piece.bits & left_two_columns_mask) {
+            return false;
+        }
+
+        piece_bitboard new_piece = {
+            piece.type,
+            static_cast<uint32_t>(piece.row_1 << 2U),
+            static_cast<uint32_t>(piece.row_2 << 2U),
+            static_cast<uint32_t>(piece.row_3 << 2U),
+            static_cast<uint32_t>(piece.row_4 << 2U)
+        };
+
+        piece_bitboard intermediate_piece = {
+            piece.type,
+            static_cast<uint32_t>(piece.row_1 << 1U),
+            static_cast<uint32_t>(piece.row_2 << 1U),
+            static_cast<uint32_t>(piece.row_3 << 1U),
+            static_cast<uint32_t>(piece.row_4 << 1U)
+        };
+
+        return move_piece_combo_common(piece, intermediate_piece, new_piece);
+    }
+
+    bool move_piece_right_twice(piece_bitboard &piece) {
+        if (piece.bits & right_two_columns_mask) {
+            return false;
+        }
+
+        piece_bitboard new_piece = {
+            piece.type,
+            static_cast<uint32_t>(piece.row_1 >> 2U),
+            static_cast<uint32_t>(piece.row_2 >> 2U),
+            static_cast<uint32_t>(piece.row_3 >> 2U),
+            static_cast<uint32_t>(piece.row_4 >> 2U)
+        };
+
+        piece_bitboard intermediate_piece = {
+            piece.type,
+            static_cast<uint32_t>(piece.row_1 >> 1U),
+            static_cast<uint32_t>(piece.row_2 >> 1U),
+            static_cast<uint32_t>(piece.row_3 >> 1U),
+            static_cast<uint32_t>(piece.row_4 >> 1U)
+        };
+
+        return move_piece_combo_common(piece, intermediate_piece, new_piece);
+    }
+
+    bool move_piece_up_left(piece_bitboard &piece) {
+        if (piece.bits & top_left_mask) {
+            return false;
+        }
+
+        piece_bitboard new_piece = {
+            piece.type,
+            static_cast<uint32_t>(piece.row_2 << 1U),
+            static_cast<uint32_t>(piece.row_3 << 1U),
+            static_cast<uint32_t>(piece.row_4 << 1U),
+            0
+        };
+
+        piece_bitboard intermediate_piece_1 = { piece.type, piece.row_2, piece.row_3, piece.row_4, 0 };
+        piece_bitboard intermediate_piece_2 = {
+            piece.type,
+            static_cast<uint32_t>(piece.row_1 << 1U),
+            static_cast<uint32_t>(piece.row_2 << 1U),
+            static_cast<uint32_t>(piece.row_3 << 1U),
+            static_cast<uint32_t>(piece.row_4 << 1U)
+        };
+
+        return move_piece_combo_common(piece, intermediate_piece_1, intermediate_piece_2, new_piece);
+    }
+
+    bool move_piece_up_right(piece_bitboard &piece) {
+        if (piece.bits & top_right_mask) {
+            return false;
+        }
+
+        piece_bitboard new_piece = {
+            piece.type,
+            static_cast<uint32_t>(piece.row_2 >> 1U),
+            static_cast<uint32_t>(piece.row_3 >> 1U),
+            static_cast<uint32_t>(piece.row_4 >> 1U),
+            0
+        };
+
+        piece_bitboard intermediate_piece_1 = { piece.type, piece.row_2, piece.row_3, piece.row_4, 0 };
+        piece_bitboard intermediate_piece_2 = {
+            piece.type,
+            static_cast<uint32_t>(piece.row_1 >> 1U),
+            static_cast<uint32_t>(piece.row_2 >> 1U),
+            static_cast<uint32_t>(piece.row_3 >> 1U),
+            static_cast<uint32_t>(piece.row_4 >> 1U)
+        };
+
+        return move_piece_combo_common(piece, intermediate_piece_1, intermediate_piece_2, new_piece);
+    }
+
+    bool move_piece_bottom_left(piece_bitboard &piece) {
+        if (piece.bits & bottom_left_mask) {
+            return false;
+        }
+
+        piece_bitboard new_piece = {
+            piece.type,
+            0,
+            static_cast<uint32_t>(piece.row_1 << 1U),
+            static_cast<uint32_t>(piece.row_2 << 1U),
+            static_cast<uint32_t>(piece.row_3 << 1U)
+        };
+
+        piece_bitboard intermediate_piece_1 = { piece.type, 0, piece.row_1, piece.row_2, piece.row_3 };
+        piece_bitboard intermediate_piece_2 = {
+            piece.type,
+            static_cast<uint32_t>(piece.row_1 << 1U),
+            static_cast<uint32_t>(piece.row_2 << 1U),
+            static_cast<uint32_t>(piece.row_3 << 1U),
+            static_cast<uint32_t>(piece.row_4 << 1U)
+        };
+
+        return move_piece_combo_common(piece, intermediate_piece_1, intermediate_piece_2, new_piece);
+    }
+
+    bool move_piece_bottom_right(piece_bitboard &piece) {
+        if (piece.bits & bottom_right_mask) {
+            return false;
+        }
+
+        piece_bitboard new_piece = {
+            piece.type,
+            0,
+            static_cast<uint32_t>(piece.row_1 >> 1U),
+            static_cast<uint32_t>(piece.row_2 >> 1U),
+            static_cast<uint32_t>(piece.row_3 >> 1U)
+        };
+
+        piece_bitboard intermediate_piece_1 = { piece.type, 0, piece.row_1, piece.row_2, piece.row_3 };
+        piece_bitboard intermediate_piece_2 = {
+            piece.type,
+            static_cast<uint32_t>(piece.row_1 >> 1U),
+            static_cast<uint32_t>(piece.row_2 >> 1U),
+            static_cast<uint32_t>(piece.row_3 >> 1U),
+            static_cast<uint32_t>(piece.row_4 >> 1U)
+        };
+
+        return move_piece_combo_common(piece, intermediate_piece_1, intermediate_piece_2, new_piece);
+    }
+
     bool solved() const {
         return (pieces[red_index].bits & solution_mask) == solution_mask;
     }
@@ -145,10 +354,10 @@ public:
 
 std::ostream& operator<<(std::ostream &os, const game_board &board) {
     static constexpr std::array<char, 4> piece_type_chars = {
-        'R', // piece_type::red
         'G', // piece_type::green
         'B', // piece_type::blue
-        'P'  // piece_type::purple
+        'P', // piece_type::purple
+        'R'  // piece_type::red
     };
 
     uint32_t mask = 0b10000'00000'00000'00000UL;
@@ -184,7 +393,7 @@ std::ostream& operator<<(std::ostream &os, const game_board &board) {
 
 namespace std {
     template<> struct hash<game_board> {
-        size_t operator()(const game_board& board) const noexcept {
+        size_t operator()(const game_board &board) const noexcept {
             return XXH64(board.pieces.data(), board.pieces.size() * sizeof(board.pieces[0]), 39);
         }
     };
